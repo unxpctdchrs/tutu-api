@@ -35,6 +35,20 @@ app
 		}
 	})
 
+	.get('user/:userId', async (c) => {
+		try {
+			const sql = neon(c.env.DATABASE_URL)
+			const db = drizzle(sql)
+			const userIdParam = c.req.param('userId')
+
+			const getUserDetails = await db.select().from(users).where(eq(users.uuid, userIdParam))
+	
+			return c.json({ error: false, userDetails: getUserDetails })
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
 	.post('register', async (c) => {
 		try {
 			const sql = neon(c.env.DATABASE_URL)
@@ -89,6 +103,31 @@ app
 			return c.json({ error: false, message: 'Login successful', loginResult: user })
 
 
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	
+	.patch('user/:userId', async (c) => {
+		try {
+			const sql = neon(c.env.DATABASE_URL)
+			const db = drizzle(sql)
+			const userIdParam: string = c.req.param('userId')
+			const body = await c.req.parseBody()
+			const { username, password, birthDatePlace, email, phoneNumber, jenjangPendidikan } = body
+
+			// TODO: Must check the username is alr taken or no
+
+			const hashedPassword = await hash(password.toString(), 10)
+
+			const updatedUser = await db.update<PgTable>(users).set({username, password: hashedPassword, birthDatePlace, email, phoneNumber, jenjangPendidikan}).where(eq(users.uuid, userIdParam)).returning()
+
+			if (updatedUser.length > 0) {
+				return c.json({ error: false, message: 'User updated' })
+			} else {
+				return c.json({ error: true, message: 'Failed to update user profiles' }, 500)
+			}
 		} catch (error) {
 			console.log(error)
 		}
